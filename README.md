@@ -1,0 +1,2 @@
+# RelativeChange-Indicator
+ This Indicator will show the Change Percentage of a given Moving Average period. The indicator can be used to observe volatility and the force of past swings, useful to determine excesses that will possibly be reversed or repeated, given that the user has knowledge to complement with volume or standard-deviation strategies. It is suggested a period of 27600 at M1 or 1200 at H1 (meaning 40 sessions of 23hs each), or any period that complements your strategy.
