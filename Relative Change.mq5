@@ -281,6 +281,161 @@ void OnDeinit(const int reason)
 // Extra functions, utilities and conversion
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
+// PlotIndexConstruct, substitute for common call
+// Fixed Issue: the function solves a issue with the platform #property, where every single time the .ex5 file is updated or recompiled, all of the Plot (color, etc) user settings are reset - this function is not made for Levels.
+//+------------------------------------------------------------------+
+bool PlotIndexConstruct(const int plotIndex,
+                        const string plotLabel,
+                        const color plotColor,
+                        double& plotBuffer[], // Cannot set this to const, because SetIndexBuffer() parameter is not const
+                        const ENUM_INDEXBUFFER_TYPE plotIndexType = INDICATOR_DATA,
+                        const ENUM_DRAW_TYPE plotDraw = DRAW_LINE,
+                        const int plotShift = 0,
+                        const ENUM_LINE_STYLE plotStyle = STYLE_SOLID,
+                        const int plotWidth = 1,
+                        const int plotBegin = 0,
+                        const bool plotShowOnDatawindow = true,
+                        const double plotEmptyValue = 0.0)
+{
+    bool success = true;
+    if(!SetIndexBuffer(plotIndex, plotBuffer, plotIndexType)) {
+        ErrorPrint("!SetIndexBuffer(plotIndex, plotBuffer, plotIndexType)");
+        success = false;
+    }
+    if(!PlotIndexSetString(plotIndex, PLOT_LABEL, plotLabel)) {
+        ErrorPrint("!PlotIndexSetString(plotIndex, PLOT_LABEL, plotLabel)");
+        success = false;
+    }
+    if(!PlotIndexSetInteger(plotIndex, PLOT_LINE_COLOR, plotColor)) {
+        ErrorPrint("!PlotIndexSetInteger(plotIndex, PLOT_LINE_COLOR, plotColor)");
+        success = false;
+    }
+    if(plotDraw != DRAW_ARROW) {
+        if(!PlotIndexSetInteger(plotIndex, PLOT_DRAW_TYPE, plotDraw)) {
+            ErrorPrint("!PlotIndexSetInteger(plotIndex, PLOT_DRAW_TYPE, plotDraw)");
+            success = false;
+        }
+        if(!PlotIndexSetInteger(plotIndex, PLOT_SHIFT, plotShift)) {
+            ErrorPrint("!PlotIndexSetInteger(plotIndex, PLOT_SHIFT, plotShift)");
+            success = false;
+        }
+    } else {
+        if(!PlotIndexSetInteger(plotIndex, PLOT_DRAW_TYPE, plotDraw)) {
+            ErrorPrint("!PlotIndexSetInteger(plotIndex, PLOT_DRAW_TYPE, plotDraw)");
+            success = false;
+        }
+        if(!PlotIndexSetInteger(plotIndex, PLOT_ARROW_SHIFT, plotShift)) {
+            ErrorPrint("!PlotIndexSetInteger(plotIndex, PLOT_ARROW_SHIFT, plotShift)");
+            success = false;
+        }
+    }
+    if(!PlotIndexSetInteger(plotIndex, PLOT_LINE_STYLE, plotStyle)) {
+        ErrorPrint("!PlotIndexSetInteger(plotIndex, PLOT_LINE_STYLE, plotStyle)");
+        success = false;
+    }
+    if(!PlotIndexSetInteger(plotIndex, PLOT_LINE_WIDTH, plotWidth)) {
+        ErrorPrint("!PlotIndexSetInteger(plotIndex, PLOT_LINE_WIDTH, plotWidth)");
+        success = false;
+    }
+    if(!PlotIndexSetInteger(plotIndex, PLOT_DRAW_BEGIN, plotBegin)) {
+        ErrorPrint("!PlotIndexSetInteger(plotIndex, PLOT_DRAW_BEGIN, plotBegin)");
+        success = false;
+    }
+    if(!PlotIndexSetInteger(plotIndex, PLOT_SHOW_DATA, plotShowOnDatawindow)) {
+        ErrorPrint("!PlotIndexSetInteger(plotIndex, PLOT_SHOW_DATA, plotShowOnDatawindow)");
+        success = false;
+    }
+    if(!PlotIndexSetDouble(plotIndex, PLOT_EMPTY_VALUE, plotEmptyValue)) {
+        ErrorPrint("!PlotIndexSetDouble(plotIndex, PLOT_EMPTY_VALUE, plotEmptyValue)");
+        success = false;
+    }
+    return success;
+}
+//+------------------------------------------------------------------+
+//| Creating Chart object
+//+------------------------------------------------------------------+
+bool ObjectChartCreate(const string symbol, // Symbol
+                       const long chart_ID = 0, // Chart ID
+                       const int sub_window = 0, // Subwindow Index
+                       const string name = "Chart", // Object Name
+                       const ENUM_TIMEFRAMES period = PERIOD_H1, // Period
+                       const long x = 0, // X Coordinate
+                       const long y = 0, // Y Coordinate
+                       const long width = 300, // Width
+                       const long height = 200, // Height
+                       const ENUM_BASE_CORNER corner = CORNER_LEFT_UPPER, // Anchoring Corner
+                       const long scale = 2, // Scale
+                       const bool date_scale = true, // Time Scale display
+                       const bool price_scale = true, // Price Scale display
+                       const color clr = clrRed, // Border color when highlighted
+                       const ENUM_LINE_STYLE style = STYLE_SOLID, // Line Style when highlighted
+                       const long point_width = 1, // Move Point size
+                       const bool back = false, // In the background
+                       const bool selection = false, // Highlight to move
+                       const bool hidden = true, // Hidden in the Object List
+                       const long z_order = 0) // Priority for mouse click
+{
+    if(!ObjectCreate(chart_ID, name, OBJ_CHART, sub_window, 0, 0)) {
+        ErrorPrint("!ObjectCreate(chart_ID, name, OBJ_CHART, sub_window, 0, 0)");
+        return false;
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_XDISTANCE, x)) { // Wont be returning false, because supposedly the ObjectCreate() was successful at this point
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_XDISTANCE, x)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_YDISTANCE, y)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_YDISTANCE, y)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_XSIZE, width)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_XSIZE, width)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_YSIZE, height)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_YSIZE, height)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_CORNER, corner)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_CORNER, corner)");
+    }
+    if(!ObjectSetString(chart_ID, name, OBJPROP_SYMBOL, symbol)) {
+        ErrorPrint("!ObjectSetString(chart_ID, name, OBJPROP_SYMBOL, symbol)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_PERIOD, period)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_PERIOD, period)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_CHART_SCALE, scale)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_CHART_SCALE, scale)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_DATE_SCALE, date_scale)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_DATE_SCALE, date_scale)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_PRICE_SCALE, price_scale)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_PRICE_SCALE, price_scale)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_COLOR, clr)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_COLOR, clr)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_STYLE, style)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_STYLE, style)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_WIDTH, point_width)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_WIDTH, point_width)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_BACK, back)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_BACK, back)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_SELECTABLE, selection)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_SELECTABLE, selection)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_SELECTED, selection)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_SELECTED, selection)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_HIDDEN, hidden)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_HIDDEN, hidden)");
+    }
+    if(!ObjectSetInteger(chart_ID, name, OBJPROP_ZORDER, z_order)) {
+        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_ZORDER, z_order)");
+    }
+    return true;
+}
+//+------------------------------------------------------------------+
 //| Header Guard #endif
 //+------------------------------------------------------------------+
 #endif
