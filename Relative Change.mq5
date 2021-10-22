@@ -24,10 +24,13 @@ You should have received a copy of the GNU General Public License along with thi
 #property description "The indicator can be used to observe volatility and the force of past swings, useful to determine excesses that will possibly be reversed or repeated, given that the user has knowledge to complement with volume or standard-deviation strategies.\n"
 #property description "It is suggested a period of 27600 at M1 or 1200 at H1 (meaning 40 sessions of 23hs each), or any period that complements your strategy."
 #property version "1.01"
-#property strict
+#property fpfast
 #property indicator_separate_window
 #property indicator_buffers 4
 #property indicator_plots 3
+//---- Imports
+//---- Include Libraries and Modules
+//#include <MT-Utilities.mqh>
 //---- Definitions
 #ifndef ErrorPrint
 #define ErrorPrint(Dp_error) Print("ERROR: " + Dp_error + " at \"" + __FUNCTION__ + ":" + IntegerToString(__LINE__) + "\", last internal error: " + IntegerToString(GetLastError()) + " (" + __FILE__ + ")"); ResetLastError(); DebugBreak(); // It should be noted that the GetLastError() function doesn't zero the _LastError variable. Usually the ResetLastError() function is called before calling a function, after which an error appearance is checked.
@@ -50,6 +53,7 @@ INPUT bool iBufCVisible = true; // Price Line Change/Close Visible
 INPUT ENUM_APPLIED_PRICE ENUM_APPLIED_PRICEInp = PRICE_CLOSE; // Applied Price Equation
 INPUT ENUM_MA_METHOD ENUM_MA_METHODInp = MODE_SMA; // Applied Moving Average Method
 INPUT bool relativeTowardsMA = true; // True = change is relative towards MA, False = from MA to Price
+const int iShift = 0; // Shift data
 //---- "Adaptive Period"
 input group "Adaptive Period"
 INPUT bool maAdPeriodInp = true; // Adapt the Period? Overrides Standard Period Settings
@@ -107,7 +111,7 @@ datetime last = 0;
 //+------------------------------------------------------------------+
 int OnInit()
 {
-// User and Developer Input scrutiny
+    // User and Developer Input scrutiny
     if(maAdPeriodInp == true) { // Calculate maPeriod if ma_period_adaptive_inp == true. Adaptation works flawless for less than D1 - D1, W1 and MN1 are a constant set by the user.
         if((PeriodSeconds(PERIOD_CURRENT) < PeriodSeconds(PERIOD_D1)) && (PeriodSeconds(PERIOD_CURRENT) >= PeriodSeconds(PERIOD_M1))) {
             if(maAdPeriodMinutesInp > 0) {
@@ -148,12 +152,12 @@ int OnInit()
     } else {
         maPeriod = maPeriodInp;
     }
-// Treat Indicator
+    // Treat Indicator
     if(!IndicatorSetInteger(INDICATOR_DIGITS, iDigits)) { // Indicator subdigit precision
         ErrorPrint("!IndicatorSetInteger(INDICATOR_DIGITS, iDigits)");
         return INIT_FAILED;
     }
-// Set Levels
+    // Set Levels
     if(iShowZero) {
         if(!IndicatorSetInteger(INDICATOR_LEVELS, 1)) {
             ErrorPrint("!IndicatorSetInteger(INDICATOR_LEVELS, 1)");
@@ -181,7 +185,7 @@ int OnInit()
             return INIT_FAILED;
         }
     }
-// Treat maHandle
+    // Treat maHandle
     maHandle = iMA(Symbol(), Period(), maPeriod, maPeriodShift, ENUM_MA_METHODInp, ENUM_APPLIED_PRICEInp);
     if(maHandle == INVALID_HANDLE || maHandle < 0) {
         ErrorPrint("maHandle == INVALID_HANDLE || maHandle < 0");
@@ -191,20 +195,20 @@ int OnInit()
         ErrorPrint("!SetIndexBuffer(maBufIndex, maBuf, INDICATOR_CALCULATIONS)");
         return INIT_FAILED;
     }
-// Treat iBufH, iBufL and iBufC
-    if(!PlotIndexConstruct(iBufHIndex, iBufHLabel, iBufHColor, iBufH, INDICATOR_DATA, (iBufHLVisible ? iBufHDraw : DRAW_NONE), maPeriodShift, iBufHStyle, iBufHWidth, maPeriod, iBufHLVisible)) {
+    // Treat iBufH, iBufL and iBufC
+    if(!PlotIndexConstruct(iBufHIndex, iBufHLabel, iBufHColor, iBufH, INDICATOR_DATA, (iBufHLVisible ? iBufHDraw : DRAW_NONE), iShift, iBufHStyle, iBufHWidth, maPeriod, iBufHLVisible)) {
         ErrorPrint("");
         return INIT_FAILED;
     }
-    if(!PlotIndexConstruct(iBufLIndex, iBufLLabel, iBufLColor, iBufL, INDICATOR_DATA, (iBufHLVisible ? iBufLDraw : DRAW_NONE), maPeriodShift, iBufLStyle, iBufLWidth, maPeriod, iBufHLVisible)) {
+    if(!PlotIndexConstruct(iBufLIndex, iBufLLabel, iBufLColor, iBufL, INDICATOR_DATA, (iBufHLVisible ? iBufLDraw : DRAW_NONE), iShift, iBufLStyle, iBufLWidth, maPeriod, iBufHLVisible)) {
         ErrorPrint("");
         return INIT_FAILED;
     }
-    if(!PlotIndexConstruct(iBufCIndex, iBufCLabel, iBufCColor, iBufC, INDICATOR_DATA, (iBufCVisible ? iBufCDraw : DRAW_NONE), maPeriodShift, iBufCStyle, iBufCWidth, maPeriod, iBufCVisible)) {
+    if(!PlotIndexConstruct(iBufCIndex, iBufCLabel, iBufCColor, iBufC, INDICATOR_DATA, (iBufCVisible ? iBufCDraw : DRAW_NONE), iShift, iBufCStyle, iBufCWidth, maPeriod, iBufCVisible)) {
         ErrorPrint("");
         return INIT_FAILED;
     }
-// Indicator Subwindow Short Name
+    // Indicator Subwindow Short Name
     iName = StringFormat("RelChg(%d)", maPeriod); // Indicator name in Subwindow
     if(!IndicatorSetString(INDICATOR_SHORTNAME, iName)) { // Set Indicator name
         ErrorPrint("!IndicatorSetString(INDICATOR_SHORTNAME, iName)");
@@ -232,7 +236,7 @@ int OnCalculate(const int rates_total,
         return 0;
     }
     if(CopyBuffer(maHandle, 0, 0, (rates_total - prev_calculated + 1), maBuf) <= 0) { // Try to copy, if there is no data copied for some reason, then we don't need to calculate - also, we don't need to copy rates before prev_calculated as they have the same result
-        ErrorPrint("maHandle, 0, 0, (rates_total - prev_calculated + 1), maBuf) <= 0");
+        ErrorPrint("CopyBuffer(maHandle, 0, 0, (rates_total - prev_calculated + 1), maBuf) <= 0");
         return 0;
     }
     /*
@@ -244,12 +248,9 @@ int OnCalculate(const int rates_total,
 
             Since the first X candles are expected to be invalid, because there is no X < 0 data point, it will be skipped.
     */
-// Main loop of calculations
-    int i = (prev_calculated - 1);
+    // Main loop of calculations
+    int i = (((prev_calculated - 1) > maPeriod) ? (prev_calculated - 1) : maPeriod);
     for(; i < rates_total && !IsStopped(); i++) {
-        if(i < 0) {
-            continue;
-        }
         if(iBufHLVisible) {
             iBufH[i] = -(((relativeTowardsMA ? (maBuf[i] / high[i]) : (high[i] / maBuf[i])) * 100.0) - 100.0);
             iBufL[i] = -(((relativeTowardsMA ? (maBuf[i] / low[i]) : (low[i] / maBuf[i])) * 100.0) - 100.0);
@@ -275,6 +276,7 @@ int OnCalculate(const int rates_total,
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
+    IndicatorRelease(maHandle);
     return;
 }
 //+------------------------------------------------------------------+
@@ -352,91 +354,7 @@ bool PlotIndexConstruct(const int plotIndex,
     return success;
 }
 //+------------------------------------------------------------------+
-//| Creating Chart object
-//+------------------------------------------------------------------+
-bool ObjectChartCreate(const string symbol, // Symbol
-                       const long chart_ID = 0, // Chart ID
-                       const int sub_window = 0, // Subwindow Index
-                       const string name = "Chart", // Object Name
-                       const ENUM_TIMEFRAMES period = PERIOD_H1, // Period
-                       const long x = 0, // X Coordinate
-                       const long y = 0, // Y Coordinate
-                       const long width = 300, // Width
-                       const long height = 200, // Height
-                       const ENUM_BASE_CORNER corner = CORNER_LEFT_UPPER, // Anchoring Corner
-                       const long scale = 2, // Scale
-                       const bool date_scale = true, // Time Scale display
-                       const bool price_scale = true, // Price Scale display
-                       const color clr = clrRed, // Border color when highlighted
-                       const ENUM_LINE_STYLE style = STYLE_SOLID, // Line Style when highlighted
-                       const long point_width = 1, // Move Point size
-                       const bool back = false, // In the background
-                       const bool selection = false, // Highlight to move
-                       const bool hidden = true, // Hidden in the Object List
-                       const long z_order = 0) // Priority for mouse click
-{
-    if(!ObjectCreate(chart_ID, name, OBJ_CHART, sub_window, 0, 0)) {
-        ErrorPrint("!ObjectCreate(chart_ID, name, OBJ_CHART, sub_window, 0, 0)");
-        return false;
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_XDISTANCE, x)) { // Wont be returning false, because supposedly the ObjectCreate() was successful at this point
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_XDISTANCE, x)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_YDISTANCE, y)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_YDISTANCE, y)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_XSIZE, width)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_XSIZE, width)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_YSIZE, height)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_YSIZE, height)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_CORNER, corner)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_CORNER, corner)");
-    }
-    if(!ObjectSetString(chart_ID, name, OBJPROP_SYMBOL, symbol)) {
-        ErrorPrint("!ObjectSetString(chart_ID, name, OBJPROP_SYMBOL, symbol)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_PERIOD, period)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_PERIOD, period)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_CHART_SCALE, scale)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_CHART_SCALE, scale)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_DATE_SCALE, date_scale)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_DATE_SCALE, date_scale)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_PRICE_SCALE, price_scale)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_PRICE_SCALE, price_scale)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_COLOR, clr)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_COLOR, clr)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_STYLE, style)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_STYLE, style)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_WIDTH, point_width)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_WIDTH, point_width)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_BACK, back)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_BACK, back)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_SELECTABLE, selection)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_SELECTABLE, selection)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_SELECTED, selection)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_SELECTED, selection)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_HIDDEN, hidden)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_HIDDEN, hidden)");
-    }
-    if(!ObjectSetInteger(chart_ID, name, OBJPROP_ZORDER, z_order)) {
-        ErrorPrint("!ObjectSetInteger(chart_ID, name, OBJPROP_ZORDER, z_order)");
-    }
-    return true;
-}
-//+------------------------------------------------------------------+
-//| Header Guard #endif
+// Header Guard #endif
 //+------------------------------------------------------------------+
 #endif
 //+------------------------------------------------------------------+
